@@ -1,0 +1,139 @@
+opt=open("optab")
+sym=open("symtab")
+symt={}
+code=[]
+count = len(open("symtab").readlines(  ))
+count2 = len(open("optab").readlines(  ))
+opta={}
+def symtodict():
+	for i in  range(count):
+		s=sym.readline()
+		s=s.split("\t")
+		s[1]=s[1][2:]	
+		s[1]=s[1][:-1]	
+		symt[s[0]]=s[1]
+symtodict()
+sym.close()
+def opttodict():
+	for i in  range(count2):
+		s=opt.readline()
+		s=s.split("\t")
+		s[1]=s[1][:-1]
+		opta[s[0]]=s[1]
+opttodict()
+opt.close()
+obj=open("objectcode","w")
+obj.write("")
+obj.close()
+obj=open("objectcode","a")
+intm=open("intermediate")
+count3 = len(open("intermediate").readlines(  ))
+length=0
+p=0
+for i in range(count3):
+	s=intm.readline()
+	s=s[:-1]	
+	s=s.split()
+	if(s[1]=="START"):
+		k="000000"
+		k+=s[2]
+		l="000000"
+		l+=str(count3)
+		obj.write("H^"+k[-6:]+"^"+s[0]+"^"+l[-6:]+"\n")	
+	elif(opta.get(s[1])):
+		s[0]=s[0][2:]
+		k=opta.get(s[1])
+		if(length==0):
+			p=str(hex(int(s[0],16)))
+			p=p[2:]
+			p="000000"+p
+			p=p[-6:]			
+		length+=3
+		if(len(s)==3):
+			if(s[2][-2:]==",X"):
+				l=symt.get(s[2][:-2])
+				io=int(l[:1])
+				io+=8
+				io=str(hex(io))[2:]
+				l=io+l[1:]
+			else:
+				l=symt.get(s[2])			
+			l="0000"+str(l)
+		elif(len(s)==2):
+			l="0000"		
+		m="^"+str(k)+l[-4:]
+		code.append(m)
+		if(length==30):
+			obj.write("T^"+p+"^"+"1e")
+			ind=0
+			while(length>0):			
+				obj.write(code[ind])
+				length-=(len(code[ind])-1)/2
+				ind+=1
+			obj.write("\n")
+			length=0
+			code=[]
+			ind=0
+	elif((s[1]=="RESW" or s[1]=="RESB") and code):
+		length=str(hex(length))
+		length=length[2:]
+		length="00"+length
+		length=length[-2:]	
+		obj.write("T^"+p+"^"+length)
+		length=int(length,16)
+		ind=0		
+		while(length>0):			
+			obj.write(code[ind])
+			length-=(len(code[ind])-1)/2
+			ind+=1
+		obj.write("\n")
+		length=0
+		code=[]
+		ind=0
+	elif(s[1]=="WORD"):
+		if(length==0):
+			p=str(hex(int(s[0],16)))
+			p=p[2:]
+			p="000000"+p
+			p=p[-6:]
+		q=str(hex(int(s[2])))
+		q=q[2:]
+		q="000000"+q
+		q=q[-6:]
+		q="^"+q
+		code.append(q)
+		length+=3		
+	elif(s[1]=="BYTE"):
+		if(length==0):
+			p=str(hex(int(s[0],16)))
+			p=p[2:]
+			p="000000"+p
+			p=p[-6:]
+		if(s[2]=="C"):
+			ty=[hex(ord(c)) for c in s[3]]
+			ju=""
+			for o in range(len(ty)):
+				ju=ju+str(ty[o])
+			code.append("^"+ju)			
+			length+=len(ty)
+		if(s[2]=="X"):
+			code.append("^"+s[3])
+			length+=int(len(s[3])/2)
+	elif(s[1]=="END"):
+		ind=0		
+		obj.write("T^"+str(p)+"^"+str(hex(length))[2:])		
+		while(length>0):			
+			obj.write(code[ind])
+			length-=(len(code[ind])-1)/2
+			ind+=1
+		obj.write("\n")
+		length=0
+		code=[]
+		ind=0
+		break
+l=symt.get(s[2])
+if(l):
+	obj.write("E^"+str(l)+"\n")
+else:
+	print("invalid start address")		
+		
